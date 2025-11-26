@@ -34,7 +34,6 @@ class Transaksi {
         $stmt->execute();
         return $stmt;
     }
-
     public function readLaporan($start_date, $end_date) {
         $query = "SELECT t.*, p.nama_produk, p.ukuran, k.nama_kategori
                   FROM " . $this->table . " t

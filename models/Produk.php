@@ -24,7 +24,6 @@ class Produk {
                       nama_produk=:nama_produk, ukuran=:ukuran, warna=:warna,
                       stok=:stok, harga_beli=:harga_beli, harga_jual=:harga_jual,
                       deskripsi=:deskripsi";
-        // ... (sisanya tidak ada perubahan karena sudah konsisten dengan penambahan kolom di database.sql)
         
         $stmt = $this->conn->prepare($query);
         
@@ -42,7 +41,7 @@ class Produk {
     }
 
     public function readAll() {
-        // PERBAIKAN: Tambahkan JOIN ke tabel kategori agar 'nama_kategori' terbaca
+        // menambahkan JOIN ke tabel kategori agar 'nama_kategori' terbaca
         $query = "SELECT p.*, k.nama_kategori 
                   FROM " . $this->table . " p
                   LEFT JOIN kategori k ON p.id_kategori = k.id_kategori 

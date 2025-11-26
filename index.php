@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// Jika sudah login, langsung lempar ke Dashboard
+// Jika sudah login, langsung  ke Dashboard
 if(isset($_SESSION['user_id'])) {
     header("Location: views/dashboard.php");
     exit();
@@ -20,11 +20,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'];
 
     if($admin->login($username, $password)) {
-        // Set Session Variables
-        $_SESSION['user_id'] = $admin->id;
-        $_SESSION['username'] = $admin->username;
-        $_SESSION['nama_lengkap'] = $admin->nama_lengkap;
-        $_SESSION['role'] = $admin->role;
+        // PERBAIKAN: Menggunakan Getter karena properti di Model sekarang Private
+        $_SESSION['user_id'] = $admin->getId();
+        $_SESSION['username'] = $admin->getUsername();
+        $_SESSION['nama_lengkap'] = $admin->getNamaLengkap();
+        $_SESSION['role'] = $admin->getRole();
         
         // Redirect ke Dashboard
         header("Location: views/dashboard.php");
