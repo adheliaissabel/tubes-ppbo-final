@@ -1,4 +1,5 @@
 <?php
+// 2. MVC/Modular
 session_start();
 require_once '../config/database.php';
 require_once '../models/Kategori.php';
@@ -39,7 +40,7 @@ switch($action) {
         
     case 'edit':
         if(isset($_GET['id'])) {
-            // PERBAIKAN: Gunakan id_kategori sesuai Model
+            // id_kategori sesuai Model
             $kategori->id_kategori = $_GET['id'];
             $kategori->readOne();
             
@@ -60,10 +61,10 @@ switch($action) {
         
     case 'delete':
         if(isset($_GET['id'])) {
-            // PERBAIKAN: Gunakan id_kategori
+            // Gunakan id_kategori
             $kategori->id_kategori = $_GET['id'];
             
-            // Cek apakah kategori memiliki produk
+            // memeriksa apakah kategori memiliki produk
             if($kategori->countProduk() > 0) {
                 $_SESSION['error'] = "Tidak dapat menghapus kategori yang memiliki produk";
             } else {
@@ -76,7 +77,7 @@ switch($action) {
         }
         header("Location: KategoriController.php");
         exit();
-  
+
     default:
         $stmt = $kategori->readAll();
         include '../views/kategori/index.php';

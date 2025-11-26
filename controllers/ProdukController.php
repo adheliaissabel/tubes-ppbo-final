@@ -1,4 +1,5 @@
 <?php
+// 2. MVC/Modular
 session_start();
 require_once '../config/database.php';
 require_once '../models/Produk.php';
@@ -44,7 +45,7 @@ switch($action) {
             }
         }
         
-        // PENTING: Ambil data kategori agar dropdown tidak error
+        // mengambil data kategori agar dropdown tidak error
         // Kita gunakan nama variabel $stmt_kategori
         $stmt_kategori = $kategori->readAll(); 
         

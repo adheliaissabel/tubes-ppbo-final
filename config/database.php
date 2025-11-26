@@ -1,7 +1,7 @@
 <?php
 
 class Database {
-    // Properti Private (Encapsulation)
+    // 1. Properti Private (Encapsulation-penerapan konsep OOP)
     private $host;
     private $db_name;
     private $username;
@@ -11,7 +11,7 @@ class Database {
     public $conn;
 
     public function __construct() {
-        // LOGIKA CERDAS (Inovasi): 
+        // 7. konfigurasi host, port, DB, username, dan password. 
     
         $this->host = getenv('MYSQLHOST') ? getenv('MYSQLHOST') : 'localhost';
         $this->port = getenv('MYSQLPORT') ? getenv('MYSQLPORT') : '3306';
@@ -27,7 +27,7 @@ class Database {
             // Data Source Name (DSN)
             $dsn = "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name . ";charset=utf8mb4";
             
-            // Inisialisasi PDO
+            // 5. Inisialisasi PDO
             $this->conn = new PDO($dsn, $this->username, $this->password);
             
             // Set Error Mode ke Exception (Penting untuk Debugging)

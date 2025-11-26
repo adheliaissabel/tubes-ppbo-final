@@ -2,7 +2,6 @@
 class Produk {
     private $conn;
     private $table = "produk";
-
     public $id_produk;
     public $id_kategori;
     public $kode_produk;
@@ -20,10 +19,10 @@ class Produk {
 
     public function create() {
         $query = "INSERT INTO {$this->table} 
-                  SET id_kategori=:id_kategori, kode_produk=:kode_produk, 
-                      nama_produk=:nama_produk, ukuran=:ukuran, warna=:warna,
-                      stok=:stok, harga_beli=:harga_beli, harga_jual=:harga_jual,
-                      deskripsi=:deskripsi";
+                SET id_kategori=:id_kategori, kode_produk=:kode_produk, 
+                    nama_produk=:nama_produk, ukuran=:ukuran, warna=:warna,
+                    stok=:stok, harga_beli=:harga_beli, harga_jual=:harga_jual,
+                    deskripsi=:deskripsi";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_kategori', $this->id_kategori);
         $stmt->bindParam(':kode_produk', $this->kode_produk);
@@ -39,9 +38,9 @@ class Produk {
 
     public function readAll() {
         $query = "SELECT p.*, k.nama_kategori 
-                  FROM {$this->table} p
-                  LEFT JOIN kategori k ON p.id_kategori = k.id_kategori
-                  ORDER BY p.id_produk DESC";
+                FROM {$this->table} p
+                LEFT JOIN kategori k ON p.id_kategori = k.id_kategori
+                ORDER BY p.id_produk DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
@@ -64,11 +63,11 @@ class Produk {
 
     public function update() {
         $query = "UPDATE {$this->table} SET 
-                  id_kategori=:id_kategori, kode_produk=:kode_produk,
-                  nama_produk=:nama_produk, ukuran=:ukuran, warna=:warna,
-                  stok=:stok, harga_beli=:harga_beli, harga_jual=:harga_jual,
-                  deskripsi=:deskripsi
-                  WHERE id_produk=:id_produk";
+                id_kategori=:id_kategori, kode_produk=:kode_produk,
+                nama_produk=:nama_produk, ukuran=:ukuran, warna=:warna,
+                stok=:stok, harga_beli=:harga_beli, harga_jual=:harga_jual,
+                deskripsi=:deskripsi
+                WHERE id_produk=:id_produk";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_kategori', $this->id_kategori);
         $stmt->bindParam(':kode_produk', $this->kode_produk);
