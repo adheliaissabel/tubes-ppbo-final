@@ -12,11 +12,13 @@ class Database {
 
     public function __construct() {
         // LOGIKA CERDAS (Inovasi): 
+        // Cek apakah kode jalan di Railway (Environment Variables ada) atau di Localhost (XAMPP)
+        
         $this->host = getenv('MYSQLHOST') ? getenv('MYSQLHOST') : 'localhost';
         $this->port = getenv('MYSQLPORT') ? getenv('MYSQLPORT') : '3306';
         $this->db_name = getenv('MYSQLDATABASE') ? getenv('MYSQLDATABASE') : 'gudang_fashion'; // Samakan nama DB
         $this->username = getenv('MYSQLUSER') ? getenv('MYSQLUSER') : 'root';
-        $this->password = getenv('MYSQLPASSWORD') ? getenv('MYSQLPASSWORD') : ''; 
+        $this->password = getenv('MYSQLPASSWORD') ? getenv('MYSQLPASSWORD') : 'mkjw4004'; // Password lokal kamu
     }
 
     public function getConnection() {
