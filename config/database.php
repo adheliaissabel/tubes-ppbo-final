@@ -1,25 +1,45 @@
 <?php
+
 class Database {
-    // Settingan Fix untuk Localhost (Laragon/XAMPP)
-    private $host = "localhost";
-    private $db_name = "gudang_fashion";
-    private $username = "root";
-    private $password = ""; // KOSONGKAN string ini (jangan ada spasi)
+    // Properti Private (Encapsulation)
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
+    private $port;
     
     public $conn;
+
+    public function __construct() {
+        // LOGIKA CERDAS (Inovasi): 
+        // Cek apakah kode jalan di Railway (Environment Variables ada) atau di Localhost (XAMPP)
+        
+        $this->host = getenv('MYSQLHOST') ? getenv('MYSQLHOST') : 'localhost';
+        $this->port = getenv('MYSQLPORT') ? getenv('MYSQLPORT') : '3306';
+        $this->db_name = getenv('MYSQLDATABASE') ? getenv('MYSQLDATABASE') : 'gudang_fashion'; // Samakan nama DB
+        $this->username = getenv('MYSQLUSER') ? getenv('MYSQLUSER') : 'root';
+        $this->password = getenv('MYSQLPASSWORD') ? getenv('MYSQLPASSWORD') : 'mkjw4004'; // Password lokal kamu
+    }
 
     public function getConnection() {
         $this->conn = null;
         
         try {
-            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
+            // Data Source Name (DSN)
+            $dsn = "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name . ";charset=utf8mb4";
+            
+            // Inisialisasi PDO
+            $this->conn = new PDO($dsn, $this->username, $this->password);
+            
+            // Set Error Mode ke Exception (Penting untuk Debugging)
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            // Opsional: Set fetch mode default ke Associative Array (Biar coding lebih rapi nanti)
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
         } catch(PDOException $exception) {
-            // Jika error, STOP program agar tidak muncul error "prepare() on null"
-            echo "<h1>Gagal Koneksi Database</h1>";
-            echo "Pesan Error: " . $exception->getMessage();
-            exit; // PENTING: Berhenti di sini
+            // Best Practice: Jangan echo error mentah ke user di production, tapi untuk kuliah ini oke.
+            echo "Database Connection Error: " . $exception->getMessage();
         }
 
         return $this->conn;
