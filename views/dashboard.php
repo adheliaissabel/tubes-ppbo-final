@@ -1,63 +1,61 @@
 <?php
 session_start();
 
-// 1. Tampilkan Error (Wajib)
+// 1. PAKSA ERROR MUNCUL (Supaya tidak layar putih)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // 2. Cek Login
 if(!isset($_SESSION['user_id'])) {
-    // Jika belum login, lempar ke halaman depan
-    echo "<script>window.location.href='../index.php';</script>";
+    // Jika belum login, tendang ke depan
+    header("Location: ../index.php");
     exit();
 }
 
-// ==========================================
-// BAGIAN 1: DATABASE CLASS (LANGSUNG DISINI)
-// ==========================================
-// Kita taruh class Database di sini supaya tidak perlu 'require_once' yang bikin error
-class Database {
-    private $conn;
-
-    public function getConnection() {
-        $this->conn = null;
-        
-        // Ambil data environment variable
-        $host = getenv('DB_HOST');
-        $port = getenv('DB_PORT') ? getenv('DB_PORT') : '5432';
-        $db_name = getenv('DB_DATABASE');
-        $username = getenv('DB_USERNAME');
-        $password = getenv('DB_PASSWORD');
-
-        // Jika env kosong (Localhost), pakai nilai default (Opsional)
-        if (!$host) $host = 'aws-0-ap-southeast-1.pooler.supabase.com';
-        if (!$db_name) $db_name = 'postgres';
-
-        try {
-            $dsn = "pgsql:host=" . $host . ";port=" . $port . ";dbname=" . $db_name;
-            $this->conn = new PDO($dsn, $username, $password);
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        } catch(PDOException $exception) {
-            die("<div style='background:red; color:white; padding:20px;'>
-                <h1>Koneksi Database Gagal</h1>
-                <p>Error: " . $exception->getMessage() . "</p>
-                </div>");
-        }
-        return $this->conn;
-    }
-}
-
-// ==========================================
-// BAGIAN 2: LOGIKA DASHBOARD
-// ==========================================
+// =========================================================
+// BAGIAN 1: KONEKSI DATABASE (LANGSUNG DI SINI)
+// =========================================================
+// Kita tidak pakai 'require_once' supaya tidak error 'File Not Found'
 
 try {
-    // Koneksi
-    $database = new Database();
-    $db = $database->getConnection();
+    // A. Coba ambil data dari Settingan Vercel
+    $host = getenv('DB_HOST');
+    $port = getenv('DB_PORT');
+    $db_name = getenv('DB_DATABASE');
+    $username = getenv('DB_USERNAME');
+    $password = getenv('DB_PASSWORD');
 
+    // B. JIKA KOSONG (CADANGAN/FALLBACK)
+    // Masukkan data Supabase kamu di sini sebagai jaga-jaga
+    if (!$host) {
+        $host = 'aws-0-ap-southeast-1.pooler.supabase.com';
+        $port = '6543'; 
+        $db_name = 'postgres';
+        $username = 'postgres.hkxkszzflgtlrezvfyqv'; // Username panjang kamu
+        $password = 'siguda-passw'; // <--- GANTI INI DENGAN PASSWORD ASLI!
+    }
+
+    // C. Proses Koneksi
+    $dsn = "pgsql:host=" . $host . ";port=" . ($port ? $port : '5432') . ";dbname=" . $db_name;
+    
+    $db = new PDO($dsn, $username, $password);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("<div style='padding: 20px; background: red; color: white;'>
+            <h1>GAGAL KONEKSI DATABASE</h1>
+            <p>" . $e->getMessage() . "</p>
+            <p>Pastikan Environment Variable di Vercel sudah diisi atau data cadangan di kodingan benar.</p>
+         </div>");
+}
+
+// =========================================================
+// BAGIAN 2: LOGIKA DASHBOARD
+// =========================================================
+
+try {
     // 1. Hitung Total Produk
     $stmt = $db->query("SELECT COUNT(*) as total FROM produk");
     $total_produk = $stmt->fetch()['total'];
@@ -73,9 +71,8 @@ try {
                         ORDER BY t.tanggal DESC LIMIT 50";
     $stmt = $db->query($query_transaksi);
     $all_transaksi = $stmt->fetchAll();
-    $total_transaksi = count($all_transaksi); // Ini hitung yg diambil aja (sample)
-
-    // Hitung total row transaksi asli (untuk kartu statistik)
+    
+    // Hitung total row transaksi asli
     $stmt_count_trans = $db->query("SELECT COUNT(*) as total FROM transaksi");
     $total_transaksi_real = $stmt_count_trans->fetch()['total'];
 
