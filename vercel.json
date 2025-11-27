@@ -38,7 +38,7 @@
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "/$1"
+            "dest": "/index.php"
         }
     ]
 }
