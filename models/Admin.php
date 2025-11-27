@@ -3,7 +3,6 @@ class Admin {
     private $conn;
     private $table = "users";
 
-    // PERBAIKAN: Property diset PRIVATE (Encapsulation)
     private $id;
     private $username;
     private $password;
@@ -14,25 +13,11 @@ class Admin {
         $this->conn = $db;
     }
 
-    // --- GETTER & SETTER (Wajib untuk Checklist OOP) ---
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = $id; }
-
     public function getUsername() { return $this->username; }
-    public function setUsername($username) { $this->username = $username; }
-
-    // Password hanya setter demi keamanan (Write Only)
-    public function setPassword($password) { 
-        $this->password = $password; 
-    }
-
     public function getNamaLengkap() { return $this->nama_lengkap; }
-    public function setNamaLengkap($nama) { $this->nama_lengkap = $nama; }
-
     public function getRole() { return $this->role; }
-    public function setRole($role) { $this->role = $role; }
 
-    // Method Login
     public function login($usernameInput, $passwordInput) {
         $query = "SELECT id, username, password, nama_lengkap, role 
                   FROM " . $this->table . " 
@@ -44,9 +29,43 @@ class Admin {
 
         if($stmt->rowCount() > 0) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            // Verifikasi password hash
+
+            // --- MULAI AREA DEBUGGING (MATA-MATA) ---
+            // Kode ini akan memunculkan kotak laporan di layar login
+            echo "<div style='background:#fff0f0; border:2px solid red; padding:20px; margin:20px; z-index:9999; position:relative; color:black;'>";
+            echo "<h3>🕵️ DIAGNOSA LOGIN</h3>";
+            echo "Username Input: <b>" . htmlspecialchars($usernameInput) . "</b><br>";
+            echo "Username Database: <b>" . $row['username'] . "</b><br>";
+            echo "Password Input: <b>" . htmlspecialchars($passwordInput) . "</b><br>";
+            echo "<hr>";
+            
+            // Cek Hash
+            $hash_db = $row['password'];
+            $panjang_hash = strlen($hash_db);
+            echo "Hash di Database: <br><textarea cols='60' rows='2'>$hash_db</textarea><br>";
+            echo "Panjang Hash: <b>$panjang_hash</b> karakter.<br>";
+            
+            if ($panjang_hash < 60) {
+                 echo "<b style='color:red'>[FATAL] Hash Kependekan! Wajib 60 karakter.</b><br>"; 
+            } else {
+                 echo "<b style='color:green'>[OK] Panjang Hash Valid.</b><br>";
+            }
+
+            // Cek Verifikasi
+            $cek = password_verify($passwordInput, $hash_db);
+            if ($cek) {
+                echo "<h2 style='color:green'>✅ STATUS: COCOK! (Harusnya Login Sukses)</h2>";
+            } else {
+                echo "<h2 style='color:red'>❌ STATUS: GAGAL!</h2>";
+                echo "Hash di database BUKAN hasil enkripsi dari '$passwordInput'.<br>";
+                echo "<b>Solusi:</b> Copy hash baru ini dan update di HeidiSQL:<br>";
+                $new_hash = password_hash($passwordInput, PASSWORD_DEFAULT);
+                echo "<textarea cols='60' rows='2'>$new_hash</textarea>";
+            }
+            echo "</div>";
+            // --- SELESAI DEBUGGING ---
+
             if(password_verify($passwordInput, $row['password'])) {
-                // Set data ke property private lewat setter/langsung
                 $this->id = $row['id'];
                 $this->username = $row['username'];
                 $this->nama_lengkap = $row['nama_lengkap'];
@@ -55,73 +74,6 @@ class Admin {
             }
         }
         return false;
-    }
-
-    // Method Tambah Admin
-    public function create() {
-        $query = "INSERT INTO " . $this->table . " 
-                  SET username=:username, password=:password, 
-                      nama_lengkap=:nama_lengkap, role=:role";
-        
-        $stmt = $this->conn->prepare($query);
-        
-        // Ambil data dari property private
-        $uname = htmlspecialchars(strip_tags($this->username));
-        $nama = htmlspecialchars(strip_tags($this->nama_lengkap));
-        $role = htmlspecialchars(strip_tags($this->role));
-        $pass = password_hash($this->password, PASSWORD_DEFAULT);
-
-        $stmt->bindParam(':username', $uname);
-        $stmt->bindParam(':password', $pass);
-        $stmt->bindParam(':nama_lengkap', $nama);
-        $stmt->bindParam(':role', $role);
-
-        if($stmt->execute()) {
-            return true;
-        }
-        return false;
-    }
-
-    // Method Update Admin
-    public function update() {
-        $query = "UPDATE " . $this->table . " 
-                  SET username=:username, nama_lengkap=:nama_lengkap, role=:role";
-        
-        if(!empty($this->password)) {
-            $query .= ", password=:password";
-        }
-        
-        $query .= " WHERE id=:id";
-        
-        $stmt = $this->conn->prepare($query);
-        
-        $uname = htmlspecialchars(strip_tags($this->username));
-        $nama = htmlspecialchars(strip_tags($this->nama_lengkap));
-        $role = htmlspecialchars(strip_tags($this->role));
-        $id = htmlspecialchars(strip_tags($this->id));
-        
-        $stmt->bindParam(':username', $uname);
-        $stmt->bindParam(':nama_lengkap', $nama);
-        $stmt->bindParam(':role', $role);
-        $stmt->bindParam(':id', $id);
-        
-        if(!empty($this->password)) {
-            $pass = password_hash($this->password, PASSWORD_DEFAULT);
-            $stmt->bindParam(':password', $pass);
-        }
-
-        return $stmt->execute();
-    }
-
-    // Method Hapus Admin
-    public function delete() {
-        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        
-        $id = htmlspecialchars(strip_tags($this->id));
-        $stmt->bindParam(':id', $id);
-
-        return $stmt->execute();
     }
 }
 ?>
