@@ -1,40 +1,69 @@
 <?php
-require_once 'config/database.php';
+// 1. PAKSA ERROR MUNCUL DI LAYAR (Penting untuk Vercel)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-$database = new Database();
-$db = $database->getConnection();
+echo "<h1>🔍 Debugging Level MAX</h1>";
 
-$username_dicari = 'dosen';
-$password_dicoba = 'admin123';
+// 2. CEK APAKAH VARIABEL VERCEL TERBACA?
+$host = getenv('DB_HOST');
+$user = getenv('DB_USERNAME');
+$pass = getenv('DB_PASSWORD');
+$port = getenv('DB_PORT');
+$db_name = getenv('DB_DATABASE');
 
-echo "<h2>Mode Debugging Login</h2>";
+echo "<h3>1. Cek Environment Variable</h3>";
+echo "DB_HOST: " . ($host ? "✅ Ada ($host)" : "❌ KOSONG (Cek Settings Vercel)") . "<br>";
+echo "DB_USER: " . ($user ? "✅ Ada ($user)" : "❌ KOSONG") . "<br>";
+echo "DB_PASS: " . ($pass ? "✅ Ada (Disembunyikan)" : "❌ KOSONG") . "<br>";
+echo "DB_PORT: " . ($port ? "✅ Ada ($port)" : "❌ KOSONG (Default ke 5432)") . "<br>";
 
-// 1. Cek Koneksi & Data Mentah
-$stmt = $db->prepare("SELECT * FROM users WHERE username = :u");
-$stmt->bindParam(':u', $username_dicari);
+if (!$host || !$user || !$pass) {
+    die("<br><h2 style='color:red'>STOP: Variabel Environment Belum Masuk!</h2>Silakan ke Vercel > Settings > Environment Variables, lalu Redeploy.");
+}
+
+// 3. TES KONEKSI DATABASE MANUAL (Tanpa file config/database.php)
+echo "<hr><h3>2. Tes Koneksi Database</h3>";
+try {
+    // Kita coba koneksi langsung di sini untuk memastikan tidak ada masalah di class Database.php
+    $dsn = "pgsql:host=$host;port=" . ($port ? $port : '5432') . ";dbname=$db_name";
+    $pdo = new PDO($dsn, $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "<h3 style='color:green'>✅ KONEKSI SUKSES!</h3>";
+} catch (PDOException $e) {
+    echo "<h3 style='color:red'>❌ KONEKSI GAGAL</h3>";
+    echo "Pesan Error: " . $e->getMessage() . "<br>";
+    die(); // Matikan proses jika koneksi gagal
+}
+
+// 4. CEK USER LOGIN
+echo "<hr><h3>3. Cek User 'dosen'</h3>";
+$username_input = 'dosen';
+$password_input = 'admin123';
+
+$stmt = $pdo->prepare("SELECT * FROM users WHERE username = :u");
+$stmt->bindParam(':u', $username_input);
 $stmt->execute();
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
-    echo "❌ User '$username_dicari' TIDAK DITEMUKAN di database.<br>";
+    echo "<h3 style='color:red'>❌ User '$username_input' TIDAK DITEMUKAN di database.</h3>";
+    echo "Cek isi tabel users di HeidiSQL.";
 } else {
     echo "✅ User ditemukan!<br>";
-    echo "Username DB: [" . $user['username'] . "]<br>";
-    echo "Password Hash di DB: [" . $user['password'] . "]<br>";
-    echo "Panjang Hash: " . strlen($user['password']) . " karakter (Harus 60)<br><br>";
+    echo "Hash di DB: " . $user['password'] . "<br>";
+    echo "Panjang Hash: " . strlen($user['password']) . " karakter.<br><br>";
 
-    // 2. Tes Verifikasi Password
-    echo "Mencoba mencocokkan dengan password: '$password_dicoba'...<br>";
-    if (password_verify($password_dicoba, $user['password'])) {
-        echo "🎉 <b>HASIL: COCOK!</b> Harusnya login berhasil.";
+    if (password_verify($password_input, $user['password'])) {
+        echo "<h1 style='color:green'>🎉 PASSWORD COCOK!</h1>";
     } else {
-        echo "💀 <b>HASIL: TIDAK COCOK.</b><br>";
-        echo "Kemungkinan hash di database rusak/terpotong atau salah algoritma.";
+        echo "<h1 style='color:red'>💀 PASSWORD TIDAK COCOK</h1>";
+        echo "Hash di database bukan hasil enkripsi dari 'admin123'.<br>";
         
-        // Buat hash baru yang valid untuk dicopy
-        echo "<br><br><b>Solusi:</b> Copy kode di bawah ini dan jalankan di HeidiSQL:<br>";
-        $new_hash = password_hash($password_dicoba, PASSWORD_DEFAULT);
-        echo "<textarea cols='100' rows='3'>UPDATE users SET password = '$new_hash' WHERE username = '$username_dicari';</textarea>";
+        $new_hash = password_hash($password_input, PASSWORD_DEFAULT);
+        echo "<br><b>Solusi:</b> Jalankan query ini di HeidiSQL:<br>";
+        echo "<textarea rows='3' cols='80'>UPDATE users SET password = '$new_hash' WHERE username = '$username_input';</textarea>";
     }
 }
 ?>
