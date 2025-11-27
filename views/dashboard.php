@@ -1,94 +1,87 @@
 <?php
 session_start();
 
-// 1. PAKSA ERROR MUNCUL (Supaya tidak layar putih)
+// 1. Tampilkan Error
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // 2. Cek Login
 if(!isset($_SESSION['user_id'])) {
-    // Jika belum login, tendang ke depan
     header("Location: ../index.php");
     exit();
 }
 
-// =========================================================
-// BAGIAN 1: KONEKSI DATABASE (LANGSUNG DI SINI)
-// =========================================================
-// Kita tidak pakai 'require_once' supaya tidak error 'File Not Found'
+// ==========================================
+// 1. INPUT PASSWORD (CARA AMAN / NOWDOC)
+// ==========================================
+// Paste password kamu DI ANTARA baris 'MULAI_PASSWORD' dan 'AKHIR_PASSWORD'.
+// Jangan ubah tulisan MULAI_PASSWORD/AKHIR_PASSWORD-nya.
+// Jangan ada spasi di depan AKHIR_PASSWORD;
 
+$password_supabase = <<<'AKHIR_PASSWORD'
+siguda-passw
+AKHIR_PASSWORD;
+
+// ==========================================
+// 2. KONEKSI DATABASE
+// ==========================================
+$db = null;
 try {
-    // A. Coba ambil data dari Settingan Vercel
-    $host = getenv('DB_HOST');
-    $port = getenv('DB_PORT');
-    $db_name = getenv('DB_DATABASE');
-    $username = getenv('DB_USERNAME');
-    $password = getenv('DB_PASSWORD');
+    // Settingan Default (Supabase)
+    $host = 'aws-0-ap-southeast-1.pooler.supabase.com';
+    $port = '6543';
+    $dbname = 'postgres';
+    $user = 'postgres.hkxkszzflgtlrezvfyqv'; // Username
+    $pass = trim($password_supabase); // Bersihkan spasi tidak sengaja
 
-    // B. JIKA KOSONG (CADANGAN/FALLBACK)
-    // Masukkan data Supabase kamu di sini sebagai jaga-jaga
-    if (!$host) {
-        $host = 'aws-0-ap-southeast-1.pooler.supabase.com';
-        $port = '6543'; 
-        $db_name = 'postgres';
-        $username = 'postgres.hkxkszzflgtlrezvfyqv'; // Username panjang kamu
-        $password = 'siguda-passw'; // <--- GANTI INI DENGAN PASSWORD ASLI!
+    // Cek jika Vercel Environment tersedia (Prioritas)
+    if (getenv('DB_PASSWORD')) {
+        $host = getenv('DB_HOST');
+        $port = getenv('DB_PORT');
+        $dbname = getenv('DB_DATABASE');
+        $user = getenv('DB_USERNAME');
+        $pass = getenv('DB_PASSWORD');
     }
 
-    // C. Proses Koneksi
-    $dsn = "pgsql:host=" . $host . ";port=" . ($port ? $port : '5432') . ";dbname=" . $db_name;
-    
-    $db = new PDO($dsn, $username, $password);
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    $db = new PDO($dsn, $user, $pass);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-} catch (PDOException $e) {
-    die("<div style='padding: 20px; background: red; color: white;'>
-            <h1>GAGAL KONEKSI DATABASE</h1>
-            <p>" . $e->getMessage() . "</p>
-            <p>Pastikan Environment Variable di Vercel sudah diisi atau data cadangan di kodingan benar.</p>
+} catch (Throwable $e) {
+    // Menangkap Error Syntax maupun Koneksi
+    die("<div style='background:darkred; color:white; padding:20px; font-family:sans-serif;'>
+            <h1>FATAL ERROR</h1>
+            <h3>" . $e->getMessage() . "</h3>
+            <p>Line: " . $e->getLine() . "</p>
          </div>");
 }
 
-// =========================================================
-// BAGIAN 2: LOGIKA DASHBOARD
-// =========================================================
-
+// ==========================================
+// 3. LOGIKA DASHBOARD
+// ==========================================
 try {
-    // 1. Hitung Total Produk
-    $stmt = $db->query("SELECT COUNT(*) as total FROM produk");
-    $total_produk = $stmt->fetch()['total'];
-
-    // 2. Hitung Total Kategori
-    $stmt = $db->query("SELECT COUNT(*) as total FROM kategori");
-    $total_kategori = $stmt->fetch()['total'];
-
-    // 3. Ambil Transaksi (Gabung Tabel Produk)
-    $query_transaksi = "SELECT t.*, p.nama_produk, p.kode_produk 
-                        FROM transaksi t
-                        LEFT JOIN produk p ON t.id_produk = p.id_produk
-                        ORDER BY t.tanggal DESC LIMIT 50";
-    $stmt = $db->query($query_transaksi);
-    $all_transaksi = $stmt->fetchAll();
+    // Hitung-hitungan Sederhana
+    $total_produk = $db->query("SELECT COUNT(*) FROM produk")->fetchColumn();
+    $total_kategori = $db->query("SELECT COUNT(*) FROM kategori")->fetchColumn();
+    $total_transaksi = $db->query("SELECT COUNT(*) FROM transaksi")->fetchColumn();
     
-    // Hitung total row transaksi asli
-    $stmt_count_trans = $db->query("SELECT COUNT(*) as total FROM transaksi");
-    $total_transaksi_real = $stmt_count_trans->fetch()['total'];
+    // Total Aset (Stok * Harga)
+    $stmt = $db->query("SELECT SUM(stok * harga) FROM produk");
+    $aset = $stmt->fetchColumn() ?: 0;
 
-    // 4. Hitung Nilai Aset
-    $query_aset = "SELECT SUM(stok * harga) as total_aset FROM produk";
-    $stmt = $db->query($query_aset);
-    $aset = $stmt->fetch();
-    $total_nilai_stok = $aset['total_aset'] ?? 0;
-
-    // 5. Stok Menipis
-    $query_low = "SELECT * FROM produk WHERE stok < 10 ORDER BY stok ASC LIMIT 5";
-    $stmt = $db->query($query_low);
-    $low_stock_data = $stmt->fetchAll();
+    // Data Tabel
+    $stok_menipis = $db->query("SELECT * FROM produk WHERE stok < 10 LIMIT 5")->fetchAll();
+    
+    // Transaksi Terakhir (Join)
+    $sql = "SELECT t.*, p.nama_produk FROM transaksi t 
+            LEFT JOIN produk p ON t.id_produk = p.id_produk 
+            ORDER BY t.tanggal DESC LIMIT 5";
+    $transaksi_terakhir = $db->query($sql)->fetchAll();
 
 } catch (Exception $e) {
-    die("Error Query Dashboard: " . $e->getMessage());
+    die("Error Query: " . $e->getMessage());
 }
 ?>
 
@@ -97,119 +90,80 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - SIGUDA</title>
+    <title>Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 shadow-sm">
-  <div class="container">
-    <a class="navbar-brand fw-bold" href="#"><i class="bi bi-box-seam"></i> SIGUDA</a>
-    <div class="ms-auto">
-        <a class="btn btn-danger btn-sm" href="../logout.php">Logout</a>
+<nav class="navbar navbar-dark bg-primary mb-4 p-3">
+    <div class="container">
+        <span class="navbar-brand h1">SIGUDA</span>
+        <a href="../logout.php" class="btn btn-danger btn-sm">Logout</a>
     </div>
-  </div>
 </nav>
 
 <div class="container">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h4>Halo, <?php echo htmlspecialchars($_SESSION['nama_lengkap'] ?? 'User'); ?>!</h4>
-                    <p class="text-muted mb-0">Role: <strong><?php echo ucfirst($_SESSION['role'] ?? 'Staff'); ?></strong></p>
-                </div>
-            </div>
-        </div>
+    <div class="alert alert-primary">
+        Halo, <strong><?php echo htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Admin'); ?></strong>
     </div>
 
-    <div class="row mb-4">
+    <div class="row mb-4 text-center">
         <div class="col-md-3">
-            <div class="card bg-primary text-white h-100 shadow-sm">
-                <div class="card-body">
-                    <h6>Total Produk</h6>
-                    <h2><?php echo $total_produk; ?></h2>
-                </div>
+            <div class="card p-3 shadow-sm border-primary">
+                <h3><?php echo $total_produk; ?></h3>
+                <small>Produk</small>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-success text-white h-100 shadow-sm">
-                <div class="card-body">
-                    <h6>Total Kategori</h6>
-                    <h2><?php echo $total_kategori; ?></h2>
-                </div>
+            <div class="card p-3 shadow-sm border-success">
+                <h3><?php echo $total_kategori; ?></h3>
+                <small>Kategori</small>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning text-white h-100 shadow-sm">
-                <div class="card-body">
-                    <h6>Total Transaksi</h6>
-                    <h2><?php echo $total_transaksi_real; ?></h2>
-                </div>
+            <div class="card p-3 shadow-sm border-warning">
+                <h3><?php echo $total_transaksi; ?></h3>
+                <small>Transaksi</small>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-info text-white h-100 shadow-sm">
-                <div class="card-body">
-                    <h6>Nilai Aset</h6>
-                    <h4>Rp <?php echo number_format($total_nilai_stok, 0, ',', '.'); ?></h4>
-                </div>
+            <div class="card p-3 shadow-sm border-info">
+                <h3>Rp <?php echo number_format($aset, 0, ',', '.'); ?></h3>
+                <small>Aset</small>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <h5 class="text-danger mb-0">Stok Menipis</h5>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-striped mb-0">
-                        <thead><tr><th>Produk</th><th>Sisa</th></tr></thead>
-                        <tbody>
-                            <?php foreach($low_stock_data as $row): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($row['nama_produk']); ?></td>
-                                <td><span class="badge bg-danger"><?php echo $row['stok']; ?></span></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white text-danger fw-bold">Stok Menipis</div>
+                <ul class="list-group list-group-flush">
+                    <?php foreach($stok_menipis as $item): ?>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <?php echo htmlspecialchars($item['nama_produk']); ?>
+                        <span class="badge bg-danger"><?php echo $item['stok']; ?></span>
+                    </li>
+                    <?php endforeach; ?>
+                    <?php if(empty($stok_menipis)) echo "<li class='list-group-item text-center text-muted'>Aman</li>"; ?>
+                </ul>
             </div>
         </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <h5 class="text-primary mb-0">Transaksi Terakhir</h5>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table mb-0">
-                        <thead><tr><th>Produk</th><th>Jenis</th><th>Tgl</th></tr></thead>
-                        <tbody>
-                            <?php 
-                            $i=0; 
-                            foreach($all_transaksi as $row): 
-                                if($i++ >= 5) break; 
-                            ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($row['nama_produk'] ?? 'ID:'.$row['id_produk']); ?></td>
-                                <td>
-                                    <?php if($row['jenis_transaksi'] == 'masuk'): ?>
-                                        <span class="badge bg-success">Masuk</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-danger">Keluar</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo date('d/m/y', strtotime($row['tanggal'])); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white text-primary fw-bold">Transaksi Terakhir</div>
+                <ul class="list-group list-group-flush">
+                    <?php foreach($transaksi_terakhir as $t): ?>
+                    <li class="list-group-item">
+                        <?php echo htmlspecialchars($t['nama_produk']); ?>
+                        <br>
+                        <small class="text-muted">
+                            <?php echo $t['jenis_transaksi'] == 'masuk' ? '🟢 Masuk' : '🔴 Keluar'; ?> 
+                            - <?php echo $t['tanggal']; ?>
+                        </small>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
             </div>
         </div>
     </div>
