@@ -1,44 +1,8 @@
 {
-    "version": 2,
-    "framework": null,
-    "builds": [
-        {
-            "src": "*.php",
-            "use": "vercel-php@0.7.2"
-        },
-        {
-            "src": "api/*.php",
-            "use": "vercel-php@0.7.2"
-        },
-        {
-            "src": "models/*.php",
-            "use": "vercel-php@0.7.2"
-        },
-        {
-            "src": "views/*.php",
-            "use": "vercel-php@0.7.2"
-        },
-        {
-            "src": "**/*.css",
-            "use": "@vercel/static"
-        },
-        {
-            "src": "**/*.js",
-            "use": "@vercel/static"
-        },
-        {
-            "src": "**/*.jpg",
-            "use": "@vercel/static"
-        },
-        {
-            "src": "**/*.png",
-            "use": "@vercel/static"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "/$1"
-        }
-    ]
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
